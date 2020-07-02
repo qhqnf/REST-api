@@ -1,23 +1,41 @@
-from django.shortcuts import render
-from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.views import APIView
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
+from rest_framework import status
 from .models import Room
-from .serializers import RoomSerializer, BigRoomSerializer
-
-# Customize pagination
-class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 20
-    page_size_query_param = "page_size"
-    max_page_size = 100
+from .serializers import ReadRoomSerializer, WriteRoomSerializer
 
 
-class ListRoomsView(ListAPIView):
-    queryset = Room.objects.all()
-    serializer_class = RoomSerializer
-    pagination_class = LargeResultsSetPagination
+class RoomsView(APIView):
+    def get(self, request):
+        rooms = Room.objects.all()[:5]
+        serializer = ReadRoomSerializer(rooms, many=True).data
+        return Response(serializer)
+
+    def post(self, request):
+        if not request.user.is_authenticated:
+            return Response(status=status.HTTP_401_UNAUTHORIZED)
+        serializer = WriteRoomSerializer(data=request.data)
+        if serializer.is_valid():
+            room = serializer.save(user=request.user)
+            room_serializer = ReadRoomSerializer(room).data
+            return Response(data=room_serializer, status=status.HTTP_200_OK)
+        else:
+            print(serializer.errors)
+            return Response(status=status.HTTP_400_BAD_REQUEST)
 
 
-class SeeRoomView(RetrieveAPIView):
-    queryset = Room.objects.all()
-    serializer_class = BigRoomSerializer
+class RoomView(APIView):
+    def get(self, request, pk):
+        try:
+            room = Room.objects.get(pk=pk)
+            serializer = ReadRoomSerializer(room).data
+            return Response(serializer)
+        except Room.DoesNotExist:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request):
+        pass
+
+    def delete(self, request):
+        pass
