@@ -26,6 +26,17 @@ class ReadUserSerilaizer(serializers.ModelSerializer):
             "is_superuser",
             "is_active",
             "is_staff",
+            "favs",
             "date_joined",
         )
 
+
+class WriteUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = (
+            "username",
+            "first_name",
+            "last_name",
+            "email",
+        )
