@@ -1,3 +1,6 @@
+import jwt
+from django.conf import settings
+from django.contrib.auth import authenticate
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
@@ -6,7 +9,17 @@ from rest_framework import status
 from rooms.serializers import RoomSerializer
 from rooms.models import Room
 from .models import User
-from .serializers import ReadUserSerilaizer, WriteUserSerializer
+from .serializers import UserSerializer
+
+
+class UsersView(APIView):
+    def post(self, requsst):
+        serializer = UserSerializer(request.data)
+        if serializer.is_valid():
+            new_user = serializer.save()
+            return Response(UserSerializer(new_user).data)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class MeView(APIView):
@@ -14,10 +27,10 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return Response(ReadUserSerilaizer(request.user).data)
+        return Response(UserSerializer(request.user).data)
 
     def put(self, request):
-        serializer = WriteUserSerializer(request.user, data=request.data, partial=True)
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response()
@@ -29,7 +42,7 @@ class MeView(APIView):
 def user_detail(request, pk):
     try:
         user = User.objects.get(pk=pk)
-        return Response(ReadUserSerilaizer(user).data)
+        return Response(UserSerializer(user).data)
     except User.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
 
@@ -57,3 +70,19 @@ class FavsView(APIView):
             except Room.DoesNotExist:
                 pass
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(["POST"])
+def login(request):
+    username = request.data.get("username")
+    password = request.data.get("password")
+    if not username or not password:
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+    user = authenticate(username=username, password=password)
+    if user is not None:
+        encoding_jwt = jwt.encode(
+            {"id": user.pk}, settings.SECRET_KEY, algorithm="HS256"
+        )
+        return Response(data=encoding_jwt)
+    else:
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
