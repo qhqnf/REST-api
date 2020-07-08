@@ -4,6 +4,9 @@ from rest_framework import authentication
 from rest_framework import exceptions
 from users.models import User
 
+# with 'WSGIPathAuthorization On' if you are with server
+# because aws automatically remove header
+
 
 class JWTAuthentication(authentication.BaseAuthentication):
     def authenticate(self, request):
